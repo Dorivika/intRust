@@ -2,7 +2,8 @@ use crate::token::TokenType;
 
 #[cfg(test)]
 mod tests {
-    use std::option;
+
+    use crate::token;
 
     use super::*;
 
@@ -15,22 +16,41 @@ mod tests {
 
     struct Lexer {
         input : &'static str,
-        position : option<i32>,
-        read_postion : option<i32>,
-        ch : option<u8>,
+        position : Option<i32>,
+        read_position : Option<i32>,
+        ch : Option<u8>,
 
     }
 
     impl Lexer {
-        fn read_char(&self){
-            if self.read_postion >= self.input.len() {
-                self.ch = 0
+        fn read_char(&mut self){
+            if self.read_position.unwrap() >= self.input.len().try_into().unwrap() {
+                self.ch = Some(0)
             } 
             else {
-                 self.ch = self.input[self.read_postion.unwrap()]
+                self.ch = self.input.bytes().nth(self.read_position.unwrap() as usize)
             }
-            self.position.un = self.read_postion;
-            self.read_postion += 1;
+            self.position = self.read_position;
+            self.read_position = Some(self.read_position.unwrap() + 1);
+        }
+
+        fn next_token(&mut self) -> token::Token {
+            let tok : token::Token; 
+
+            tok = match self.ch.unwrap() {
+                b'=' => token::Token { _type: token::ASSIGN, literal: (self.ch.unwrap() as char) },
+                b'+' => token::Token { _type: token::PLUS, literal: &(self.ch.unwrap() as char).to_string() },
+                b'(' => token::Token { _type: token::LPAREN, literal: &(self.ch.unwrap() as char).to_string() },
+                b')' => token::Token { _type: token::RPAREN, literal: &(self.ch.unwrap() as char).to_string()},
+                b'{' => token::Token { _type: token::LBRACE, literal: &(self.ch.unwrap() as char).to_string()},
+                b'}' => token::Token { _type: token::RBRACE, literal: &(self.ch.unwrap() as char).to_string() },
+                b',' => token::Token { _type: token::COMMA, literal: &(self.ch.unwrap() as char).to_string() },
+                b';' => token::Token { _type: token::SEMICOLON, literal: &(self.ch.unwrap() as char).to_string() },
+                0 => token::Token { _type: token::EOF, literal: &(self.ch.unwrap() as char).to_string() },
+                _ => token::Token { _type: token::ILLEGAL, literal: &(self.ch.unwrap() as char).to_string() }
+            };
+            self.read_char();
+            tok
         }
         
     }
@@ -51,12 +71,12 @@ mod tests {
                                         
         ];
 
-        let l = new(input);
+        let mut l = new(input);
 
         for (i,tt) in tests.iter().enumerate() {
             let tok = l.next_token();
 
-            assert_eq!(tok.type, tt.expected_type, "test{}- token type wrong. expected {}, got{}",i,tt.expected_type,tok.type);
+            assert_eq!(tok._type, tt.expected_type, "test{}- token type wrong. expected {}, got{}",i,tt.expected_type,tok.type);
             assert_eq!(tok.literal, tt.expected_literal, "test{}- literal wrong. expected {}, got{}",i,tt.expected_literal,tok.literal);
 
 
@@ -68,7 +88,7 @@ mod tests {
         Lexer {
             input : Some(input),
             position : None,
-            read_postion : None,
+            read_position : None,
             ch : None
         }
     }
